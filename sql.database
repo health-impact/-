@@ -1,1 +1,29 @@
+-- 1. جدول الأصناف الثابتة
+CREATE TABLE items (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    barcode VARCHAR(50) UNIQUE,
+    item_name VARCHAR(150) NOT NULL,
+    category VARCHAR(100),       
+    current_stock INT DEFAULT 0,  
+    min_limit INT DEFAULT 5       
+);
+
+-- 2. جدول الفواتير / الإيصالات الرئيسي
+CREATE TABLE transactions (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    transaction_type ENUM('in', 'out', 'adjust') NOT NULL, 
+    destination_source VARCHAR(150),                       
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100)                                
+);
+
+-- 3. جدول تفاصيل الفاتورة (الأصناف داخل كل فاتورة)
+CREATE TABLE transaction_details (
+    detail_id INT AUTO_INCREMENT PRIMARY KEY,
+    transaction_id INT,
+    item_id INT,
+    quantity INT NOT NULL,
+    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
+    FOREIGN KEY (item_id) REFERENCES items(item_id)
+);
 
