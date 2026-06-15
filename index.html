@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl"> 
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منظومة مخازن كلية التقنية الطبية - </title>
+    <title>منظومة مخازن كلية التقنية الطبية</title>
     
     <style>
         :root {
@@ -82,6 +82,7 @@
         .badge-in { background-color: var(--success-color); }
         .badge-out { background-color: var(--danger-color); }
 
+        /* إعدادات الطباعة */
         @media print {
             body { background: white; padding: 0; }
             .no-print { display: none !important; } 
@@ -103,7 +104,7 @@
     
     <header class="no-print">
         <h1>جامعة طرابلس - كلية التقنية الطبية</h1>
-        <p class="subtitle">منظومة المخازن الإلكترونية (نسخة الأوفلاين المؤمنة بالكامل 💾)</p>
+        <p class="subtitle">منظومة إدارة المخازن الإلكترونية المطور (فواتير متعددة الأصناف)</p>
     </header>
 
     <div class="grid">
@@ -158,15 +159,9 @@
                     </thead>
                     <tbody id="cartTableBody"></tbody>
                 </table>
-                <button type="button" class="btn-success" onclick="finalizeAndSaveInvoice()">💾 ترحيل الفاتورة وحفظها في الجهاز</button>
+                <button type="button" class="btn-success" onclick="finalizeAndSaveInvoice()">💾 ترحيل الفاتورة وحفظها نهائياً</button>
             </div>
             
-            <div class="card" style="background-color: #fff3cd; border: 1px solid #ffeeba;">
-                <h3 style="margin-top:0; color: #856404;">⚠️ التحكم بالبيانات المخزنة</h3>
-                <p style="font-size: 12px; color: #666; margin-bottom: 10px;">البيانات تُحفظ تلقائياً في متصفح هذا الجهاز بدون إنترنت.</p>
-                <button type="button" style="background-color: #e74c3c;" onclick="resetSystemData()">🧹 تصفير المنظومة بالكامل وحذف السجل</button>
-            </div>
-
             <div class="card">
                 <h2>التقرير العام</h2>
                 <button class="btn-print" style="background-color: #7f8c8d;" onclick="printInventoryReport()">طباعة كشف الجرد الحالي للمخزن</button>
@@ -217,7 +212,7 @@
                 <h4>قسم المخازن والمشتريات</h4>
             </div>
             <div style="text-align: center;">
-                <h2>نموذج مخزن رسمي</h2>
+                <h2>نموذج مخزني رسمي</h2>
             </div>
             <div style="text-align: left;">
                 <p><strong>التاريخ:</strong> <span id="invoiceDate"></span></p>
@@ -225,10 +220,10 @@
             </div>
         </div>
         
-        <center><h1 id="invoiceTitle" style="margin-top:20px;">إذن صرف </h1></center>
+        <center><h1 id="invoiceTitle" style="margin-top:20px;">إذن صرف مخزني</h1></center>
         
         <div style="margin: 20px 0; font-size: 16px;">
-            <p><strong>الجهة المعنية (المستلم):</strong> <span id="invoiceParty"></span></p>
+            <p><strong>الجهة المعنية (المستلم / المورد):</strong> <span id="invoiceParty"></span></p>
         </div>
         
         <table>
@@ -240,13 +235,14 @@
                     <th style="border: 2px solid #000; background-color: #eee; color: #000;">ملاحظات حالة العهدة</th>
                 </tr>
             </thead>
-            <tbody id="invoiceItemsRows"></tbody>
+            <tbody id="invoiceItemsRows">
+                </tbody>
         </table>
         
         <div style="margin-top: 60px; display: flex; justify-content: space-between; font-size: 15px;">
-            <p><strong>توقيع أمين المخزن :</strong> ........................</p>
-            <p><strong>توقيع المستلم :</strong> ........................</p>
-            <p><strong>اعتماد الشؤون الإدارية:</strong> ........................</p>
+            <p><strong>توقيع أمين المخزن الرئيسي:</strong> ........................</p>
+            <p><strong>توقيع المستلم (القسم العِلمي):</strong> ........................</p>
+            <p><strong>اعتماد عميد الكلية / المدير الإداري:</strong> ........................</p>
         </div>
         
         <center style="margin-top:40px;" class="no-print">
@@ -258,23 +254,29 @@
 </div>
 
 <script>
-    // القيم المبدئية في حال أول مرة تفتح فيها المنظومة
-    const defaultInventory = [
+    // 1. قاعدة بيانات الأصناف المتاحة
+    let inventory = [
         { id: 1, name: "ورق طباعة A4", category: "قرطاسية", stock: 120 },
         { id: 2, name: "ميكروسكوب معملي ضوئي", category: "أجهزة معامل", stock: 15 },
         { id: 3, name: "جهاز كمبيوتر مكتبي i7", category: "حواسيب", stock: 35 }
     ];
 
-    // جلب البيانات المخزنة أوفلاين، لو لم توجد يتم جلب القيم المبدئية
-    let inventory = JSON.parse(localStorage.getItem('college_inventory')) || defaultInventory;
-    let globalInvoicesHistory = JSON.parse(localStorage.getItem('college_invoices')) || [];
-    
+    // 2. السلة المؤقتة للفاتورة الحالية قبل حفظها
     let currentInvoiceItems = [];
 
-    function saveToLocalStorage() {
-        localStorage.setItem('college_inventory', JSON.stringify(inventory));
-        localStorage.setItem('college_invoices', JSON.stringify(globalInvoicesHistory));
-    }
+    // 3. سجل الفواتير الكلي المخزن (يحتوي مصفوفة أصناف داخل كل فاتورة)
+    let globalInvoicesHistory = [
+        {
+            id: 2001,
+            date: "15/06/2026 09:30",
+            type: "out",
+            party: "قسم المختبرات الطبية / معمل 1",
+            items: [
+                { itemName: "ورق طباعة A4", qty: 10 },
+                { itemName: "ميكروسكوب معملي ضوئي", qty: 1 }
+            ]
+        }
+    ];
 
     function renderInventory() {
         const tbody = document.getElementById('inventoryTable');
@@ -297,13 +299,14 @@
         const input = document.getElementById('partyInput');
         if(type === 'in') {
             label.innerText = "المورد / الجهة الموردة";
-            input.placeholder = "المخازن العامة";
+            input.placeholder = "مثال: شركة المدار للقرطاسية";
         } else {
-            label.innerText = "الجهة المستلمة (القسم/الإدارة)";
-            input.placeholder = ";
+            label.innerText = "الجهة المستلمة (القسم/المعمل)";
+            input.placeholder = "مثال: قسم التقنية الطبية / معمل الأحياء الدقيقة";
         }
     }
 
+    // إضافة صنف إلى القائمة المؤقتة للفاتورة
     function addItemToInvoiceList() {
         const itemId = parseInt(document.getElementById('itemSelect').value);
         const qty = parseInt(document.getElementById('qtyInput').value);
@@ -316,27 +319,38 @@
 
         const item = inventory.find(i => i.id === itemId);
 
+        // التحقق من المخزون مسبقاً في حالة الصرف والرفض المبكر
         if (type === 'out') {
-            let alreadySpent = currentInvoiceItems.filter(i => i.id === itemId).reduce((sum, i) => sum + i.qty, 0);
-            if (item.stock < (alreadySpent + qty)) {
-                alert(`خطأ: المخزون لا يكفي! المتاح فعلياً: ${item.stock}`);
+            // حساب كم تم حجز من هذا الصنف في السلة حالياً
+            let ήeadyspent = currentInvoiceItems.filter(i => i.id === itemId).reduce((sum, i) => sum + i.qty, 0);
+            if (item.stock < (ήeadyspent + qty)) {
+                alert(`خطأ: المخزون لا يكفي! المتاح فعلياً: ${item.stock} والكمية المحجوزة بالسلة الحالية: ${ήeadyspent}`);
                 return;
             }
         }
 
-        currentInvoiceItems.push({ id: item.id, name: item.name, qty: qty });
+        // إضافة العنصر للسلة
+        currentInvoiceItems.push({
+            id: item.id,
+            name: item.name,
+            qty: qty
+        });
+
         renderCart();
     }
 
     function renderCart() {
         const card = document.getElementById('tempCartCard');
         const tbody = document.getElementById('cartTableBody');
+        
         if (currentInvoiceItems.length === 0) {
             card.style.display = 'none';
             return;
         }
+        
         card.style.display = 'block';
         tbody.innerHTML = '';
+        
         currentInvoiceItems.forEach((item, index) => {
             tbody.innerHTML += `
                 <tr>
@@ -348,50 +362,65 @@
         });
     }
 
-    removeItemFromCart = (index) => { currentInvoiceItems.splice(index, 1); renderCart(); }
+    function removeItemFromCart(index) {
+        currentInvoiceItems.splice(index, 1);
+        renderCart();
+    }
 
+    // ترحيل الفاتورة بالكامل وحفظها وتحديث كميات الجرد الفعلي
     function finalizeAndSaveInvoice() {
         const type = document.getElementById('actionType').value;
         const party = document.getElementById('partyInput').value || "غير محدد";
 
-        if (currentInvoiceItems.length === 0) { alert("السلة فارغة!"); return; }
+        if (currentInvoiceItems.length === 0) {
+            alert("لا يمكنك ترحيل فاتورة فارغة! أضف أصناف أولاً.");
+            return;
+        }
 
+        // تحديث كميات الجرد الفعلي لكل الأصناف المضافة دفعة واحدة
         currentInvoiceItems.forEach(cartItem => {
             const dbItem = inventory.find(i => i.id === cartItem.id);
-            if (type === 'in') dbItem.stock += cartItem.qty;
-            else dbItem.stock -= cartItem.qty;
+            if (type === 'in') {
+                dbItem.stock += cartItem.qty;
+            } else {
+                dbItem.stock -= cartItem.qty;
+            }
         });
 
-        const nextInvoiceId = globalInvoicesHistory.length > 0 ? globalInvoicesHistory[globalInvoicesHistory.length - 1].id + 1 : 5001;
+        // توليد رقم فاتورة تسلسلي
+        const nextInvoiceId = globalInvoicesHistory.length > 0 ? globalInvoicesHistory[globalInvoicesHistory.length - 1].id + 1 : 4001;
 
+        // نسخ السلة المؤقتة إلى سجل الأرشيف الدائم
         globalInvoicesHistory.push({
             id: nextInvoiceId,
-            date: new Date().toLocaleString('ar-LY'),
+            date: new Date().toLocaleDateString('ar-LY') + " " + new Date().toLocaleTimeString('ar-LY'),
             type: type,
             party: party,
             items: [...currentInvoiceItems]
         });
 
+        // تنظيف السلة المؤقتة و واجهة المورد
         currentInvoiceItems = [];
         document.getElementById('partyInput').value = '';
         
-        saveToLocalStorage(); // الحفظ الفوري في المتصفح أوفلاين
+        // تحديث الواجهات
         renderCart();
         renderInventory();
         renderLog();
 
-        alert(`تم ترحيل وحفظ الفاتورة رقم #${nextInvoiceId} بنجاح في ذاكرة الجهاز الفوري!`);
+        alert(`تم ترحيل الفاتورة رقم #${nextInvoiceId} بنجاح وتحديث العهدة المخزنية!`);
     }
 
     function renderLog() {
         const tbody = document.getElementById('logTable');
         tbody.innerHTML = '';
+        
         globalInvoicesHistory.slice().reverse().forEach(inv => {
             tbody.innerHTML += `
                 <tr>
                     <td>#${inv.id}</td>
                     <td>${inv.date}</td>
-                    <td><span class="badge ${inv.type==='in'?'badge-in':'badge-out'}">${inv.type==='in'?'إدخال':'إخراج'}</span></td>
+                    <td><span class="badge ${inv.type==='in'?'badge-in':'badge-out'}">${inv.type==='in'?'إدخال (توريد)':'إخراج (صرف)'}</span></td>
                     <td>${inv.party}</td>
                     <td><b>${inv.items.length} أصناف</b></td>
                     <td class="no-print">
@@ -402,29 +431,35 @@
         });
     }
 
+    // دالة جلب الفاتورة المتعددة وطباعتها بالكامل
     function printSpecificInvoice(invoiceId) {
         const inv = globalInvoicesHistory.find(i => i.id === invoiceId);
         if (!inv) return;
 
         document.body.classList.remove('printing-inventory');
+
+        // تجهيز النصوص والترويسة
         document.getElementById('invoiceTitle').innerText = inv.type === 'in' ? "وصل إدخال مخزني (توريد)" : "إذن صرف مخزني (إخراج)";
         document.getElementById('invoiceId').innerText = inv.id;
         document.getElementById('invoiceDate').innerText = inv.date;
         document.getElementById('invoiceParty').innerText = inv.party;
 
+        // بناء سطور جدول الأصناف داخل ورقة الطباعة بشكل ديناميكي
         const rowsContainer = document.getElementById('invoiceItemsRows');
         rowsContainer.innerHTML = '';
+        
         inv.items.forEach((item, index) => {
             rowsContainer.innerHTML += `
                 <tr>
                     <td style="border: 2px solid #000; text-align:center;">${index + 1}</td>
                     <td style="border: 2px solid #000; font-size: 15px; font-weight: bold;">${item.name || item.itemName}</td>
                     <td style="border: 2px solid #000; font-size: 15px; font-weight: bold; text-align: center;">${item.qty}</td>
-                    <td style="border: 2px solid #000; font-size: 13px;">سليم ومطابق للمواصفات.</td>
+                    <td style="border: 2px solid #000; font-size: 13px; color:#555;">سليم ومطابق للمواصفات.</td>
                 </tr>
             `;
         });
 
+        // إظهار قسم الفاتورة وضبط الشاشة عليها
         document.getElementById('invoiceSection').style.display = 'block';
         document.getElementById('invoiceSection').scrollIntoView();
     }
@@ -435,21 +470,11 @@
         document.body.classList.remove('printing-inventory');
     }
 
-    function resetSystemData() {
-        if(confirm("تحذير: هل أنت متأكد من رغبتك في حذف جميع الفواتير وتصفير المنظومة؟ لا يمكن التراجع عن هذا الإجراء.")) {
-            localStorage.clear();
-            inventory = defaultInventory;
-            globalInvoicesHistory = [];
-            renderInventory();
-            renderLog();
-            renderCart();
-            alert("تم تصفير المنظومة وإعادتها للحالة الافتراضية بنجاح.");
-        }
+    function closeInvoice() {
+        document.getElementById('invoiceSection').style.display = 'none';
     }
 
-    function closeInvoice() { document.getElementById('invoiceSection').style.display = 'none'; }
-
-    // تشغيل فوري
+    // التشغيل المبدئي
     renderInventory();
     renderLog();
 </script>
