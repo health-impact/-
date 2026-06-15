@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منظومة مخازن الكلية</title>
+    
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -20,10 +21,7 @@
             color: #333;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1200px; margin: 0 auto; }
 
         header {
             text-align: center;
@@ -35,12 +33,7 @@
         h1 { color: var(--primary-color); margin: 0; }
         p.subtitle { color: #666; margin: 5px 0 0 0; }
 
-        /* شبكة الأقسام */
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
-        }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
 
         .card {
             background: white;
@@ -50,90 +43,51 @@
             margin-bottom: 20px;
         }
 
-        h2 {
-            margin-top: 0;
-            color: var(--primary-color);
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 8px;
-        }
+        h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid #ddd; padding-bottom: 8px; }
 
-        /* النموذج */
-        .form-group {
-            margin-bottom: 15px;
-        }
+        .form-group { margin-bottom: 15px; }
 
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
 
         input, select {
-            width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
+            width: 100%; padding: 10px; box-sizing: border-box;
+            border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
         }
 
         button {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            width: 100%;
+            background-color: var(--primary-color); color: white; padding: 10px 15px;
+            border: none; border-radius: 4px; cursor: pointer; font-size: 14px;
+            font-weight: bold; width: 100%;
         }
 
         button.btn-success { background-color: var(--success-color); }
         button.btn-print { background-color: #2980b9; margin-top: 10px; }
 
-        /* الجداول */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 
-        th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: right;
-        }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
 
-        th {
-            background-color: var(--primary-color);
-            color: white;
-        }
+        th { background-color: var(--primary-color); color: white; }
 
         tr:nth-child(even) { background-color: #f2f2f2; }
 
-        .badge {
-            padding: 3px 8px;
-            border-radius: 4px;
-            color: white;
-            font-size: 12px;
-        }
+        .badge { padding: 3px 8px; border-radius: 4px; color: white; font-size: 12px; }
         .badge-in { background-color: var(--success-color); }
         .badge-out { background-color: var(--danger-color); }
 
-        /* تنسيق خاص بالطباعة (Print Stylesheet) */
+        /* التعديل الجوهري للطباعة: إخفاء كل شيء عدا الفاتورة عند طباعة الفاتورة */
         @media print {
             body { background: white; padding: 0; }
-            .no-print { display: none !important; }
-            .card { box-shadow: none; padding: 0; margin: 0; }
-            .grid { grid-template-columns: 1fr; }
-            .print-invoice {
-                display: block !important;
-                border: 2px solid #000;
-                padding: 20px;
-                margin-top: 50px;
-            }
+            .no-print { display: none !important; } /* يخفي النماذج، الأزرار، والـ الهيدر */
+            .hide-on-invoice-print { display: none !important; } /* يخفي الجداول الجانبية والجرد */
+            .card { box-shadow: none; padding: 0; margin: 0; border: none; }
+            .grid { display: block; }
+            .print-invoice { display: block !important; border: 2px solid #000; padding: 3px 20px; margin-top: 20px; }
         }
+
+        /* حالة خاصة عند طباعة كشف الجرد نفسه */
+        body.printing-inventory .hide-on-invoice-print { display: block !important; }
+        body.printing-inventory .print-invoice { display: none !important; }
 
         .print-invoice { display: none; }
     </style>
@@ -188,11 +142,11 @@
                 <h2>إجراء جرد أو طباعة فاتورة</h2>
                 <button class="btn-print" onclick="prepareInvoice('in')">معاينة وطباعة آخر فاتورة إدخال</button>
                 <button class="btn-print" style="background-color: #8e44ad;" onclick="prepareInvoice('out')">معاينة وطباعة آخر إذن صرف</button>
-                <button class="btn-print" style="background-color: #7f8c8d;" onclick="window.print()">طباعة كشف الجرد الحالي</button>
+                <button class="btn-print" style="background-color: #7f8c8d;" onclick="printInventoryReport()">طباعة كشف الجرد الحالي فقط</button>
             </div>
         </div>
 
-        <div>
+        <div class="hide-on-invoice-print">
             <div class="card">
                 <h2>حالة الجرد الحالي للمخزن</h2>
                 <table>
@@ -204,8 +158,7 @@
                             <th>الرصيد الحالي بالمخزن</th>
                         </tr>
                     </thead>
-                    <tbody id="inventoryTable">
-                        </tbody>
+                    <tbody id="inventoryTable"></tbody>
                 </table>
             </div>
 
@@ -221,8 +174,7 @@
                             <th>الجهة / المورد</th>
                         </tr>
                     </thead>
-                    <tbody id="logTable">
-                        </tbody>
+                    <tbody id="logTable"></tbody>
                 </table>
             </div>
         </div>
@@ -260,15 +212,14 @@
             <p>توقيع المستلم/المورد: ........................</p>
         </div>
         <center style="margin-top:30px;" class="no-print">
-            <button onclick="window.print()" style="width:200px;" class="btn-success">تأكيد أمر الطباعة الورقية</button>
-            <button onclick="closeInvoice()" style="width:100px; background-color:#7f8c8d;">إغلاق</button>
+            <button onclick="triggerPrint()" style="width:200px;" class="btn-success">تأكيد أمر الطباعة الورقية</button>
+            <button onclick="closeInvoice()" style="width:100px; background-color:#7f8c8d;">إغلاق المعاينة</button>
         </center>
     </div>
 
 </div>
 
 <script>
-    // بيانات افتراضية للمنظومة تحاكي قاعدة البيانات
     let inventory = [
         { id: 1, name: "ورق طباعة A4", category: "قرطاسية", stock: 120 },
         { id: 2, name: "ميكروسكوب معملي ضوئي", category: "أجهزة معامل", stock: 15 },
@@ -277,7 +228,6 @@
 
     let transactionsHistory = [];
 
-    // تحديث الجداول في الواجهة
     function renderInventory() {
         const tbody = document.getElementById('inventoryTable');
         tbody.innerHTML = '';
@@ -306,7 +256,6 @@
         }
     }
 
-    // منطق الإدخال والإخراج وحساب الكميات تلقائياً
     function processTransaction() {
         const type = document.getElementById('actionType').value;
         const itemId = parseInt(document.getElementById('itemSelect').value);
@@ -318,7 +267,6 @@
             return;
         }
 
-        // البحث عن الصنف لتحديث كميته
         const item = inventory.find(i => i.id === itemId);
 
         if(type === 'out' && item.stock < qty) {
@@ -326,14 +274,12 @@
             return;
         }
 
-        // إجراء العملية الحسابية (الجمع التلقائي عند الإدخال والطرح عند الإخراج)
         if(type === 'in') {
             item.stock += qty;
         } else {
             item.stock -= qty;
         }
 
-        // إضافة الحركة في السجل
         transactionsHistory.push({
             date: new Date().toLocaleDateString('ar-LY') + " " + new Date().toLocaleTimeString('ar-LY'),
             type: type,
@@ -342,7 +288,6 @@
             party: party
         });
 
-        // تحديث الواجهة
         renderInventory();
         renderLog();
         alert("تم تسجيل الحركة وتحديث رصيد المخزن بنجاح!");
@@ -351,7 +296,6 @@
     function renderLog() {
         const tbody = document.getElementById('logTable');
         tbody.innerHTML = '';
-        // عرض آخر 5 حركات فقط
         transactionsHistory.slice().reverse().forEach(t => {
             tbody.innerHTML += `
                 <tr>
@@ -365,7 +309,6 @@
         });
     }
 
-    // تجهيز الفاتورة للطباعة
     function prepareInvoice(type) {
         const lastTx = transactionsHistory.slice().reverse().find(t => t.type === type);
         
@@ -374,22 +317,35 @@
             return;
         }
 
+        // إزالة وضع طباعة الجرد إذا كان فعالاً
+        document.body.classList.remove('printing-inventory');
+
         document.getElementById('invoiceTitle').innerText = type === 'in' ? "وصل إدخال مخزني (توريد)" : "إذن صرف مخزني (إخراج)";
         document.getElementById('invoiceDate').innerText = lastTx.date;
         document.getElementById('invoiceParty').innerText = lastTx.party;
         document.getElementById('invoiceItemName').innerText = lastTx.itemName;
         document.getElementById('invoiceItemQty').innerText = lastTx.qty;
 
-        // إظهار الفاتورة وإخفاء باقي العناصر عند استخدام كود الطباعة
         document.getElementById('invoiceSection').style.display = 'block';
         document.getElementById('invoiceSection').scrollIntoView();
+    }
+
+    function triggerPrint() {
+        window.print();
+    }
+
+    // دالة خاصة لطباعة تقرير الجرد فقط وإخفاء الفاتورة
+    function printInventoryReport() {
+        document.body.classList.add('printing-inventory');
+        window.print();
+        // إرجاع الحالة لطبيعتها بعد الطباعة
+        document.body.classList.remove('printing-inventory');
     }
 
     function closeInvoice() {
         document.getElementById('invoiceSection').style.display = 'none';
     }
 
-    // التشغيل المبدئي للبيانات
     renderInventory();
 </script>
 
