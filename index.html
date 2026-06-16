@@ -424,3 +424,203 @@
         function renderTables() {
             const invTbody = document.getElementById('inventoryTableBody');
             if(invTbody) {
+                invTbody.innerHTML = '';
+                systemItems.forEach(item => {
+                    invTbody.innerHTML += `<tr>
+                        <td>${item.id}</td>
+                        <td><b>${item.name}</b></td>
+                        <td>${item.category}</td>
+                        <td style="font-size:16px; font-weight:bold; color:${item.stock <= 5 ? 'red':'green'}">${item.stock}</td>
+                    </tr>`;
+                });
+            }
+
+            const logTbody = document.getElementById('logInvoicesTableBody');
+            if(logTbody) {
+                logTbody.innerHTML = '';
+                systemInvoices.slice().reverse().forEach(inv => {
+                    logTbody.innerHTML += `<tr>
+                        <td>#${inv.id}</td>
+                        <td>${inv.date}</td>
+                        <td><span class="badge ${inv.type==='in'?'badge-in':'badge-out'}">${inv.type==='in'?'إدخل':'صرف'}</span></td>
+                        <td>${inv.party}</td>
+                        <td><b>${inv.items.length} أصناف</b></td>
+                        <td><button type="button" style="padding:4px 8px; font-size:12px; width:auto; background-color:#34495e;" onclick="loadAndPrintInvoice(${inv.id})">🖨️ طباعة</button></td>
+                    </tr>`;
+                });
+            }
+        }
+
+        // إضافة صنف جديد للمنظومة
+        function addNewItemToSystem() {
+            const name = document.getElementById('newCnfName').value.trim();
+            const category = document.getElementById('newCnfCategory').value;
+            const stock = parseInt(document.getElementById('newCnfStock').value) || 0;
+
+            if(!name) { alert("من فضلك اكتب اسم الصنف الجديد أولاً"); return; }
+
+            const newId = systemItems.length > 0 ? systemItems[systemItems.length - 1].id + 1 : 1;
+            systemItems.push({ id: newId, name: name, category: category, stock: stock });
+            
+            commitData();
+            updateAllDropdowns();
+            renderTables();
+            document.getElementById('newCnfForm').reset();
+            alert("تم تسجيل الصنف الجديد بنجاح.");
+        }
+
+        // إضافة قسم أو مورد
+        function addNewEntity(type) {
+            if(type === 'dept') {
+                const dept = document.getElementById('newDeptName').value.trim();
+                if(!dept) return;
+                systemDepts.push(dept);
+                document.getElementById('newDeptName').value = '';
+                alert("تم إدراج القسم وتثبيته بنجاح.");
+            } else {
+                const sup = document.getElementById('newSupName').value.trim();
+                if(!sup) return;
+                systemSups.push(sup);
+                document.getElementById('newSupName').value = '';
+                alert("تم إدراج المورد وتثبيته بنجاح.");
+            }
+            commitData();
+            updateAllDropdowns();
+        }
+
+        // إضافة مادة للسلة الحالية
+        function addItemToInvoice(type) {
+            const selectId = type === 'in' ? 'itemSelectIn' : 'itemSelectOut';
+            const qtyId = type === 'in' ? 'qtyInputIn' : 'qtyInputOut';
+            const cart = type === 'in' ? cartIn : cartOut;
+
+            const itemId = parseInt(document.getElementById(selectId).value);
+            const qty = parseInt(document.getElementById(qtyId).value) || 0;
+            if(qty <= 0) { alert("الرجاء إدخال كمية صحيحة أكبر من الصفر"); return; }
+
+            const originalItem = systemItems.find(i => i.id === itemId);
+
+            if(type === 'out') {
+                let currentReserved = cartOut.filter(c => c.id === itemId).reduce((a,b)=> a+b.qty, 0);
+                if(originalItem.stock < (currentReserved + qty)) {
+                    alert(`عذراً، الرصيد لا يسمح. المتاح حالياً هو: ${originalItem.stock}`);
+                    return;
+                }
+            }
+
+            cart.push({ id: originalItem.id, name: originalItem.name, qty: qty });
+            renderActiveCart(type);
+        }
+
+        // عرض السلة الحالية
+        function renderActiveCart(type) {
+            const cart = type === 'in' ? cartIn : cartOut;
+            const cardElement = type === 'in' ? document.getElementById('cartCardIn') : document.getElementById('cartCardOut');
+            const tbodyElement = type === 'in' ? document.getElementById('cartTableIn') : document.getElementById('cartTableOut');
+
+            if(cart.length === 0) { cardElement.style.display = 'none'; return; }
+            cardElement.style.display = 'block';
+            tbodyElement.innerHTML = '';
+
+            cart.forEach((item, idx) => {
+                tbodyElement.innerHTML += `<tr>
+                    <td>${item.name}</td>
+                    <td><b>${item.qty}</b></td>
+                    <td><button type="button" style="background:red; width:auto; padding:2px 7px;" onclick="dropFromCart('${type}', ${idx})">❌</button></td>
+                </tr>`;
+            });
+        }
+
+        function dropFromCart(type, index) {
+            if(type === 'in') { cartIn.splice(index, 1); renderActiveCart('in'); }
+            else { cartOut.splice(index, 1); renderActiveCart('out'); }
+        }
+
+        // ترحيل الفاتورة بالكامل
+        function finalizeInvoice(type) {
+            const cart = type === 'in' ? cartIn : cartOut;
+            const partySelectId = type === 'in' ? 'supplierSelect' : 'departmentSelect';
+            const partyVal = document.getElementById(partySelectId).value;
+
+            if(cart.length === 0) { alert("لا يمكن ترحيل وثيقة فارغة"); return; }
+
+            cart.forEach(cItem => {
+                const sysItem = systemItems.find(i => i.id === cItem.id);
+                if(type === 'in') sysItem.stock += cItem.qty;
+                else sysItem.stock -= cItem.qty;
+            });
+
+            const nextInvId = systemInvoices.length > 0 ? systemInvoices[systemInvoices.length - 1].id + 1 : 8001;
+
+            systemInvoices.push({
+                id: nextInvId,
+                date: new Date().toLocaleString('ar-LY'),
+                type: type,
+                party: partyVal,
+                items: [...cart]
+            });
+
+            if(type === 'in') { cartIn = []; renderActiveCart('in'); }
+            else { cartOut = []; renderActiveCart('out'); }
+
+            commitData();
+            renderTables();
+            alert(`تم حفظ المستند المخزني رقم #${nextInvId} بنجاح.`);
+            
+            loadAndPrintInvoice(nextInvId);
+        }
+
+        // جلب الفاتورة للمعاينة والطباعة
+        function loadAndPrintInvoice(id) {
+            const inv = systemInvoices.find(i => i.id === id);
+            if(!inv) return;
+
+            document.body.classList.remove('printing-inventory');
+            document.getElementById('invoicePrintId').innerText = inv.id;
+            document.getElementById('invoicePrintDate').innerText = inv.date;
+            document.getElementById('invoicePrintParty').innerText = inv.party;
+            
+            if(inv.type === 'in') {
+                document.getElementById('invoicePrintTitle').innerText = "وصل إدخال مخزني (توريد دائم)";
+                document.getElementById('invoiceLabelParty').innerText = "الجهة الموردة / الشركة:";
+            } else {
+                document.getElementById('invoicePrintTitle').innerText = "إذن صرف مخزني رسمي";
+                document.getElementById('invoiceLabelParty').innerText = "الجهة الإدارية / القسم المستلم:";
+            }
+
+            const rowsHtml = document.getElementById('invoicePrintRows');
+            rowsHtml.innerHTML = '';
+            inv.items.forEach((item, index) => {
+                rowsHtml.innerHTML += `<tr>
+                    <td style="border: 2px solid #000; text-align:center;">${index + 1}</td>
+                    <td style="border: 2px solid #000; font-size:15px; font-weight:bold;">${item.name}</td>
+                    <td style="border: 2px solid #000; font-size:15px; font-weight:bold; text-align:center;">${item.qty}</td>
+                    <td style="border: 2px solid #000; font-size:12px;">استلام سليم وحسب المعايير.</td>
+                </tr>`;
+            });
+
+            document.getElementById('invoiceSection').style.display = 'block';
+            document.getElementById('invoiceSection').scrollIntoView();
+        }
+
+        function printInventoryReport() {
+            document.body.classList.add('printing-inventory');
+            window.print();
+            document.body.classList.remove('printing-inventory');
+        }
+
+        function closeInvoicePreview() { document.getElementById('invoiceSection').style.display = 'none'; }
+
+        function clearSystemData() {
+            if(confirm("تحذير! هل تريد مسح السجلات بالكامل؟")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // تشغيل أساسي فوري عند تحميل الصفحة
+        updateAllDropdowns();
+        renderTables();
+    </script>
+</body>
+</html>
