@@ -4,8 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>منظومة إدارة مخازن | كلية التقنية الطبية</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* Offline-safe font stack — Cairo is pre-installed on most Arabic Windows/Mac systems */
+  @font-face {
+    font-family: 'Cairo';
+    src: local('Cairo'), local('Cairo-Regular');
+    font-weight: 400;
+  }
+</style>
 <style>
   :root {
     --teal-dark:    #0B4F5E;
@@ -25,8 +31,8 @@
     --text-main:    #1A2B35;
     --text-sub:     #5A7080;
     --border:       #D5E2E8;
-    --mono:         'IBM Plex Mono', monospace;
-    --sans:         'Cairo', sans-serif;
+    --mono:         'Courier New', 'Lucida Console', monospace;
+    --sans:         'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
     --radius:       12px;
     --shadow:       0 2px 16px rgba(11,79,94,0.10);
   }
@@ -282,7 +288,6 @@
     background: rgba(26,122,138,.1);
     color: var(--teal-mid);
   }
-  .section-tag.chem { background: rgba(192,57,43,.1); color: var(--danger); }
   .section-tag.stat { background: rgba(26,122,74,.1); color: var(--success); }
   .section-tag.furn { background: rgba(176,92,0,.1); color: var(--warn); }
 
@@ -420,7 +425,7 @@
   .move-out { background: var(--danger-soft); color: var(--danger); }
 
   /* ─── SECTION CARDS ─── */
-  .section-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .section-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
   .sec-card {
     background: var(--card);
     border-radius: var(--radius);
@@ -492,6 +497,11 @@
     <div class="topbar-title" id="page-title">لوحة التحكم</div>
     <div class="topbar-date" id="current-date"></div>
     <button class="btn btn-primary btn-sm" onclick="openAddItem()">＋ إضافة صنف</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportBackup()" title="حفظ نسخة احتياطية">💾 حفظ نسخة</button>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer;" title="استعادة نسخة احتياطية">
+      📂 استعادة
+      <input type="file" id="restore-file" accept=".json" style="display:none;" onchange="importBackup(event)">
+    </label>
   </div>
 
   <div id="content">
@@ -512,9 +522,9 @@
           <div class="kpi-icon">⚠️</div>
         </div>
         <div class="kpi-card danger">
-          <div class="kpi-label">مواد منتهية الصلاحية</div>
+          <div class="kpi-label">أصناف نافدة</div>
           <div class="kpi-value" id="kpi-exp">0</div>
-          <div class="kpi-sub">تحتاج إجراء فوري</div>
+          <div class="kpi-sub">كمية صفر</div>
           <div class="kpi-icon">🚫</div>
         </div>
         <div class="kpi-card success">
@@ -554,7 +564,6 @@
             <select id="filter-section" onchange="renderInventory()">
               <option value="">كل المخازن</option>
               <option value="lab">الأجهزة والمعدات الطبية</option>
-              <option value="chem">الكيماويات والمستهلكات</option>
               <option value="stat">القرطاسية والمكتبات</option>
               <option value="furn">الأثاث والعهدة المستديمة</option>
             </select>
@@ -573,6 +582,11 @@
               <span class="s-icon">🔍</span>
             </div>
             <button class="btn btn-primary btn-sm" onclick="openAddItem()">＋ إضافة صنف</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportBackup()" title="حفظ نسخة احتياطية">💾 حفظ نسخة</button>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer;" title="استعادة نسخة احتياطية">
+      📂 استعادة
+      <input type="file" id="restore-file" accept=".json" style="display:none;" onchange="importBackup(event)">
+    </label>
           </div>
           <div class="table-wrap">
             <table id="inv-table">
@@ -584,7 +598,6 @@
                   <th>الكمية</th>
                   <th>الحد الأدنى</th>
                   <th>الرف</th>
-                  <th>الصلاحية</th>
                   <th>الحالة</th>
                   <th>إجراء</th>
                 </tr>
@@ -661,10 +674,6 @@
               <div class="form-group">
                 <label>تاريخ الاستلام</label>
                 <input type="date" id="in-date">
-              </div>
-              <div class="form-group">
-                <label>تاريخ الصلاحية (إن وجد)</label>
-                <input type="date" id="in-expiry">
               </div>
               <div class="form-group full">
                 <label>ملاحظات</label>
@@ -759,7 +768,6 @@
         <select id="report-type" onchange="renderReport()">
           <option value="stock">تقرير المخزون الحالي</option>
           <option value="movement">تقرير الحركة</option>
-          <option value="expiry">تقرير الصلاحيات</option>
           <option value="low">تقرير النواقص</option>
         </select>
         <input type="date" id="rep-from">
@@ -802,7 +810,6 @@
           <label>المخزن / القسم *</label>
           <select id="add-section">
             <option value="lab">الأجهزة والمعدات الطبية</option>
-            <option value="chem">الكيماويات والمستهلكات</option>
             <option value="stat">القرطاسية والمكتبات</option>
             <option value="furn">الأثاث والعهدة المستديمة</option>
           </select>
@@ -826,10 +833,6 @@
         <div class="form-group">
           <label>رقم الرف / مكان التخزين</label>
           <input type="text" id="add-shelf" placeholder="مثال: A-12">
-        </div>
-        <div class="form-group">
-          <label>تاريخ الصلاحية (للكيماويات)</label>
-          <input type="date" id="add-expiry">
         </div>
         <div class="form-group full">
           <label>ملاحظات</label>
@@ -880,35 +883,13 @@ const SECTIONS = {
 
 let permitCounter = DB.get('permitCounter') || 1000;
 
-// Seed demo data
-if (!DB.get('seeded')) {
-  const today = new Date().toISOString().split('T')[0];
-  const future = d => { let x = new Date(); x.setDate(x.getDate()+d); return x.toISOString().split('T')[0]; };
-  const items = [
-    { id:1, name:'مجهر ضوئي بيولوجي', section:'lab', unit:'جهاز', qty:8, min:2, shelf:'L-A1', expiry:'', notes:'' },
-    { id:2, name:'جهاز الطرد المركزي', section:'lab', unit:'جهاز', qty:3, min:1, shelf:'L-A2', expiry:'', notes:'' },
-    { id:3, name:'حمض الكلوريدريك 37%', section:'chem', unit:'زجاجة', qty:4, min:5, shelf:'C-B1', expiry:future(30), notes:'قابل للاشتعال' },
-    { id:4, name:'كحول إيثيلي 96%', section:'chem', unit:'لتر', qty:12, min:10, shelf:'C-B2', expiry:future(180), notes:'' },
-    { id:5, name:'كيت تحليل الغلوكوز', section:'chem', unit:'علبة', qty:2, min:3, shelf:'C-C1', expiry:future(15), notes:'يحتاج تبريد' },
-    { id:6, name:'أوراق A4 (رزمة)', section:'stat', unit:'رزمة', qty:50, min:20, shelf:'S-D1', expiry:'', notes:'' },
-    { id:7, name:'أقلام حبر جاف', section:'stat', unit:'علبة', qty:3, min:5, shelf:'S-D2', expiry:'', notes:'' },
-    { id:8, name:'مكتب خشبي', section:'furn', unit:'قطعة', qty:15, min:5, shelf:'F-E1', expiry:'', notes:'صنف عهدة' },
-    { id:9, name:'كرسي مكتبي', section:'furn', unit:'قطعة', qty:30, min:10, shelf:'F-E2', expiry:'', notes:'' },
-    { id:10, name:'صحون بتري (عبوة)', section:'chem', unit:'علبة', qty:20, min:10, shelf:'C-B3', expiry:'', notes:'' },
-    { id:11, name:'ماصة عيار 10مل', section:'lab', unit:'قطعة', qty:0, min:10, shelf:'L-A3', expiry:'', notes:'نافد' },
-    { id:12, name:'ورق الطباعة A3', section:'stat', unit:'رزمة', qty:8, min:5, shelf:'S-D3', expiry:'', notes:'' },
-  ];
-  const moves = [
-    { id:'P-1001', type:'in', itemId:1, qty:2, supplier:'شركة الخليج للأجهزة', receiver:'', dept:'', date:today, invoice:'INV-2201', notes:'' },
-    { id:'P-1002', type:'out', itemId:3, qty:1, supplier:'', receiver:'د. أحمد محمد', dept:'معمل الكيمياء السريرية', date:today, invoice:'', notes:'للتجربة العملية' },
-    { id:'P-1003', type:'in', itemId:6, qty:20, supplier:'مكتبة النيل', receiver:'', dept:'', date:today, invoice:'INV-2202', notes:'' },
-    { id:'P-1004', type:'out', itemId:7, qty:2, supplier:'', receiver:'أ. سارة عبدالله', dept:'قسم الإدارة', date:today, invoice:'', notes:'' },
-  ];
-  DB.saveItems(items);
-  DB.saveMoves(moves);
-  DB.set('seeded', true);
-  DB.set('permitCounter', 1005);
-  permitCounter = 1005;
+// Initialize empty DB on first run
+if (!DB.get('initialized')) {
+  DB.saveItems([]);
+  DB.saveMoves([]);
+  DB.set('permitCounter', 1000);
+  DB.set('initialized', true);
+  permitCounter = 1000;
 }
 
 // ═══════════════════════════════════════════
@@ -922,14 +903,6 @@ function itemStatus(item) {
   return { code:'ok', label:'متوفر', cls:'badge-ok' };
 }
 
-function expiryStatus(expiry) {
-  if (!expiry) return null;
-  const diff = Math.ceil((new Date(expiry) - new Date()) / 86400000);
-  if (diff < 0)  return { label:'منتهية الصلاحية', cls:'badge-exp', diff };
-  if (diff <= 30) return { label:`تنتهي خلال ${diff} يوم`, cls:'badge-near', diff };
-  return null;
-}
-
 function getAlerts() {
   const items = DB.items();
   const alerts = [];
@@ -937,10 +910,6 @@ function getAlerts() {
     const st = itemStatus(it);
     if (st.code !== 'ok') {
       alerts.push({ type: st.code === 'out' ? 'danger' : 'warn', title: it.name, msg: st.code === 'out' ? 'الكمية صفر — نافد تماماً' : `الكمية ${it.qty} أقل من الحد الأدنى (${it.min})`, section: SECTIONS[it.section].name });
-    }
-    const es = expiryStatus(it.expiry);
-    if (es) {
-      alerts.push({ type: es.diff < 0 ? 'danger' : 'warn', title: it.name, msg: es.label, section: SECTIONS[it.section].name });
     }
   });
   return alerts;
@@ -976,7 +945,7 @@ function renderDashboard() {
 
   document.getElementById('kpi-total').textContent = items.length;
   document.getElementById('kpi-low').textContent = items.filter(i => itemStatus(i).code !== 'ok').length;
-  document.getElementById('kpi-exp').textContent = items.filter(i => { const e=expiryStatus(i.expiry); return e && e.diff<0; }).length;
+  document.getElementById('kpi-exp').textContent = items.filter(i => i.qty === 0).length;
   document.getElementById('kpi-today').textContent = moves.filter(m => m.date === t).length;
 
   // Bar chart
@@ -1032,7 +1001,6 @@ function renderInventory() {
   const body = document.getElementById('inv-body');
   body.innerHTML = filtered.map((it, idx) => {
     const st = itemStatus(it);
-    const es = expiryStatus(it.expiry);
     const secObj = SECTIONS[it.section];
     return `<tr>
       <td style="color:var(--text-sub);font-family:var(--mono);">${idx+1}</td>
@@ -1041,7 +1009,6 @@ function renderInventory() {
       <td style="font-family:var(--mono);font-weight:700;">${it.qty} <small>${it.unit}</small></td>
       <td style="font-family:var(--mono);color:var(--text-sub);">${it.min}</td>
       <td style="font-family:var(--mono);">${it.shelf || '—'}</td>
-      <td>${it.expiry ? (es ? `<span class="status-badge ${es.cls}">${es.label}</span>` : `<span style="font-size:12px;color:var(--text-sub)">${it.expiry}</span>`) : '—'}</td>
       <td><span class="status-badge ${st.cls}">${st.label}</span></td>
       <td><button class="btn btn-ghost btn-sm" onclick="deleteItem(${it.id})">🗑</button></td>
     </tr>`;
@@ -1104,7 +1071,6 @@ function submitIncoming() {
   const supplier = document.getElementById('in-supplier').value.trim();
   const date = document.getElementById('in-date').value;
   const invoice = document.getElementById('in-invoice').value.trim();
-  const expiry = document.getElementById('in-expiry').value;
   const notes = document.getElementById('in-notes').value.trim();
   if (!itemId || !qty || !supplier || !date) { alert('الرجاء تعبئة الحقول الأساسية'); return; }
 
@@ -1112,7 +1078,6 @@ function submitIncoming() {
   const idx = items.findIndex(i => i.id === itemId);
   if (idx < 0) { alert('الصنف غير موجود'); return; }
   items[idx].qty += qty;
-  if (expiry) items[idx].expiry = expiry;
   DB.saveItems(items);
 
   permitCounter++;
@@ -1123,7 +1088,7 @@ function submitIncoming() {
 
   alert(`✅ تم تسجيل الوارد بنجاح — رقم الإذن: P-${permitCounter}`);
   // Reset
-  ['in-item','in-qty','in-supplier','in-invoice','in-expiry','in-notes'].forEach(id => document.getElementById(id).value = '');
+  ['in-item','in-qty','in-supplier','in-invoice','in-notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('in-date').value = today();
   renderIncoming();
   updateBadge();
@@ -1262,23 +1227,6 @@ function renderReport() {
         <td style="padding:7px 12px;border:1px solid var(--border);"><span class="status-badge ${st.cls}">${st.label}</span></td></tr>`;
       }).join('')}</tbody>
     </table>`;
-  } else if (type === 'expiry') {
-    const exp = items.filter(i => i.expiry).map(i => ({ ...i, es: expiryStatus(i.expiry) })).sort((a,b) => new Date(a.expiry)-new Date(b.expiry));
-    html = `<h3 style="margin-bottom:14px;color:var(--teal-dark);">🗓 تقرير صلاحيات المواد الكيماوية</h3>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;">
-      <thead><tr style="background:var(--bg);">
-        <th style="padding:8px 12px;text-align:right;border:1px solid var(--border);">المادة</th>
-        <th style="padding:8px 12px;text-align:right;border:1px solid var(--border);">الكمية</th>
-        <th style="padding:8px 12px;text-align:right;border:1px solid var(--border);">تاريخ الصلاحية</th>
-        <th style="padding:8px 12px;text-align:right;border:1px solid var(--border);">الحالة</th>
-      </tr></thead>
-      <tbody>${exp.map(it => `<tr>
-        <td style="padding:7px 12px;border:1px solid var(--border);font-weight:600;">${it.name}</td>
-        <td style="padding:7px 12px;border:1px solid var(--border);font-family:var(--mono);">${it.qty} ${it.unit}</td>
-        <td style="padding:7px 12px;border:1px solid var(--border);font-family:var(--mono);">${it.expiry}</td>
-        <td style="padding:7px 12px;border:1px solid var(--border);">${it.es ? `<span class="status-badge ${it.es.cls}">${it.es.label}</span>` : '<span class="status-badge badge-ok">جيدة</span>'}</td>
-      </tr>`).join('')}</tbody>
-    </table>`;
   } else if (type === 'low') {
     const low = items.filter(i => itemStatus(i).code !== 'ok');
     html = `<h3 style="margin-bottom:14px;color:var(--teal-dark);">⚠️ تقرير النواقص والأصناف الناقصة</h3>
@@ -1385,16 +1333,15 @@ function saveItem() {
   const qty = parseInt(document.getElementById('add-qty').value) || 0;
   const min = parseInt(document.getElementById('add-min').value) || 0;
   const shelf = document.getElementById('add-shelf').value.trim();
-  const expiry = document.getElementById('add-expiry').value;
   const notes = document.getElementById('add-notes').value.trim();
   if (!name) { alert('الرجاء إدخال اسم الصنف'); return; }
 
   const items = DB.items();
   const id = Math.max(0, ...items.map(i=>i.id)) + 1;
-  items.push({ id, name, section, unit, qty, min, shelf, expiry, notes });
+  items.push({ id, name, section, unit, qty, min, shelf, notes });
   DB.saveItems(items);
   closeModal('modal-add');
-  ['add-name','add-qty','add-min','add-shelf','add-expiry','add-notes'].forEach(id => document.getElementById(id).value='');
+  ['add-name','add-qty','add-min','add-shelf','add-notes'].forEach(id => document.getElementById(id).value='');
   renderInventory();
   updateBadge();
 }
@@ -1407,6 +1354,73 @@ function closeModal(id) {
 document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('open');
 }));
+
+// ═══════════════════════════════════════════
+//  BACKUP & RESTORE
+// ═══════════════════════════════════════════
+function exportBackup() {
+  const data = {
+    version: '1.0',
+    exportDate: new Date().toISOString(),
+    systemName: 'منظومة إدارة مخازن كلية التقنية الطبية',
+    items: DB.items(),
+    moves: DB.moves(),
+    permitCounter: DB.get('permitCounter') || 1000,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8;' });
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.href = URL.createObjectURL(blob);
+  a.download = `mts_backup_${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('✅ تم حفظ النسخة الاحتياطية بنجاح');
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.items || !data.moves) {
+        alert('❌ الملف غير صالح — تأكد أنه نسخة احتياطية صحيحة من المنظومة');
+        return;
+      }
+      const confirm_msg = `سيتم استعادة:\n• ${data.items.length} صنف\n• ${data.moves.length} حركة\n\nتاريخ النسخة: ${data.exportDate ? data.exportDate.split('T')[0] : 'غير محدد'}\n\nهل تريد المتابعة؟ (سيتم استبدال البيانات الحالية)`;
+      if (!confirm(confirm_msg)) return;
+      DB.saveItems(data.items);
+      DB.saveMoves(data.moves);
+      if (data.permitCounter) {
+        DB.set('permitCounter', data.permitCounter);
+        permitCounter = data.permitCounter;
+      }
+      DB.set('initialized', true);
+      showToast('✅ تمت الاستعادة بنجاح — ' + data.items.length + ' صنف');
+      renderDashboard();
+      updateBadge();
+    } catch(err) {
+      alert('❌ خطأ في قراءة الملف: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+  event.target.value = '';
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1A7A8A;color:#fff;padding:12px 28px;border-radius:30px;font-family:Cairo,sans-serif;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:opacity .4s;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
 
 // ═══════════════════════════════════════════
 //  INIT
