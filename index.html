@@ -726,8 +726,8 @@ function requirePin(label,callback){
 
 function confirmPin(){
   const pin=document.getElementById('pin-input').value;
-  const users=DB.get('users')||{};
-  const storedPin=currentUser?users[currentUser.key]?.pin:'0000';
+  const users=DB.get('alnfati')||{};
+  const storedPin=currentUser?users[currentUser.key]?.pin:'1234';
   if(pin!==storedPin){document.getElementById('pin-err').textContent='❌ الرمز السري غير صحيح';return;}
   closeModal('modal-pin');
   if(pendingPinAction){pendingPinAction();pendingPinAction=null;}
