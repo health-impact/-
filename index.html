@@ -407,7 +407,7 @@ textarea{resize:vertical;min-height:60px;}
             </div>
           </div>
         </div>
-        <div class="card"><div class="card-header">📋 آخر الواردات</div><div class="card-body" style="padding:0;"><div class="table-wrap"><table><thead><tr><th>رقم الإذن</th><th>الأصناف</th><th>الكمية</th><th>التاريخ</th></tr></thead><tbody id="recent-in"></tbody></table></div></div></div>
+        <div class="card"><div class="card-header">📋 آخر الواردات</div><div class="card-body" style="padding:0;"><div class="table-wrap"><table><thead><tr><th>رقم الإذن</th><th>الأصناف</th><th>الكمية</th><th>التاريخ</th><th>إجراء</th></tr></thead><tbody id="recent-in"></tbody></table></div></div></div>
       </div>
     </div>
 
@@ -436,7 +436,7 @@ textarea{resize:vertical;min-height:60px;}
             </div>
           </div>
         </div>
-        <div class="card"><div class="card-header">📋 آخر المنصرفات</div><div class="card-body" style="padding:0;"><div class="table-wrap"><table><thead><tr><th>رقم الإذن</th><th>القسم</th><th>الأصناف</th><th>التاريخ</th></tr></thead><tbody id="recent-out"></tbody></table></div></div></div>
+        <div class="card"><div class="card-header">📋 آخر المنصرفات</div><div class="card-body" style="padding:0;"><div class="table-wrap"><table><thead><tr><th>رقم الإذن</th><th>القسم</th><th>الأصناف</th><th>التاريخ</th><th>إجراء</th></tr></thead><tbody id="recent-out"></tbody></table></div></div></div>
       </div>
     </div>
 
@@ -504,7 +504,7 @@ textarea{resize:vertical;min-height:60px;}
           </div>
           <!-- بيانات الدخول -->
           <div class="form-grid">
-            <div class="form-group"><label>اسم المستخدم</label><input type="text" id="set-username" placeholder="اسم المستخدم"></div>
+            <div class="form-group"><label>اسم المستخدم (اسم الدخول)</label><input type="text" id="set-username" placeholder="مثال: alnfati" autocomplete="off"></div>
             <div class="form-group"><label>كلمة المرور الجديدة</label><input type="password" id="set-newpass" placeholder="اتركه فارغاً لعدم التغيير"></div>
             <div class="form-group"><label>تأكيد كلمة المرور</label><input type="password" id="set-confirmpass" placeholder="أعد كتابة كلمة المرور"></div>
             <div class="form-group"><label>الرمز السري للعمليات الحساسة</label><input type="password" id="set-adminpin" placeholder="رمز سري (4–8 أرقام)"></div>
@@ -699,11 +699,15 @@ function doLogin(){
   const users=DB.get('users')||{};
   const err=document.getElementById('login-err');
   if(!u||!p){err.textContent='أدخل اسم المستخدم وكلمة المرور';return;}
-  if(!users[u]||users[u].pass!==p){err.textContent='❌ اسم المستخدم أو كلمة المرور غير صحيحة';return;}
+  // البحث بالاسم كـ key مباشرة
+  if(!users[u]||users[u].pass!==p){
+    err.textContent='❌ اسم المستخدم أو كلمة المرور غير صحيحة';
+    return;
+  }
   currentUser={key:u,...users[u]};
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('sidebar-username').textContent=users[u].displayName||u;
-  document.getElementById('set-username').value=users[u].displayName||u;
+  document.getElementById('set-username').value=u;
   err.textContent='';
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
@@ -721,22 +725,34 @@ function doLogout(){
 }
 
 function saveSettings(){
-  if(!currentUser){return;}
   const users=DB.get('users')||{};
-  const dname=document.getElementById('set-username').value.trim();
+  // اسم المستخدم الجديد (يُستخدم كـ key للدخول)
+  const newUsername=document.getElementById('set-username').value.trim();
   const np=document.getElementById('set-newpass').value;
   const cp=document.getElementById('set-confirmpass').value;
   const pin=document.getElementById('set-adminpin').value;
+  if(!newUsername){alert('الرجاء إدخال اسم المستخدم');return;}
   if(np&&np!==cp){alert('كلمة المرور وتأكيدها غير متطابقتان');return;}
-  if(pin&&(pin.length<4||pin.length>8||!/^\d+$/.test(pin))){alert('الرمز السري يجب أن يكون 4-8 أرقام');return;}
-  if(dname)users[currentUser.key].displayName=dname;
-  if(np)users[currentUser.key].pass=np;
-  if(pin)users[currentUser.key].pin=pin;
+  if(pin&&(pin.length<4||pin.length>8||!/^\d+$/.test(pin))){alert('الرمز السري يجب أن يكون 4-8 أرقام فقط');return;}
+  // احصل على البيانات الحالية
+  const oldKey=currentUser?currentUser.key:Object.keys(users)[0]||'alnfati';
+  const oldData=users[oldKey]||{pass:'2000',pin:'2000',displayName:'النفاتي'};
+  const updatedData={
+    displayName: newUsername,
+    pass: np||oldData.pass,
+    pin: pin||oldData.pin,
+  };
+  // احذف المفتاح القديم وأنشئ الجديد باسم المستخدم
+  delete users[oldKey];
+  users[newUsername]=updatedData;
   DB.set('users',users);
-  currentUser={key:currentUser.key,...users[currentUser.key]};
-  document.getElementById('sidebar-username').textContent=users[currentUser.key].displayName||currentUser.key;
+  // تحديث currentUser
+  if(currentUser){
+    currentUser={key:newUsername,...updatedData};
+  }
+  document.getElementById('sidebar-username').textContent=newUsername;
   ['set-newpass','set-confirmpass','set-adminpin'].forEach(id=>document.getElementById(id).value='');
-  showToast('✅ تم حفظ الإعدادات');
+  showToast('✅ تم حفظ الإعدادات — اسم الدخول: '+newUsername);
 }
 
 // ═══════════════════════════════════════════
@@ -953,8 +969,16 @@ function renderIncoming(){
   const moves=[...DB.moves()].reverse().filter(m=>m.type==='in').slice(0,8),items=DB.items();
   document.getElementById('recent-in').innerHTML=moves.map(m=>{
     const label=m.items?m.items.map(r=>{const x=items.find(i=>i.id===r.itemId)||{};return x.name||'—';}).join('، '):(items.find(i=>i.id===m.itemId)||{}).name||'—';
-    return`<tr><td style="font-family:var(--mono);font-size:11px;">${m.id}</td><td style="font-size:12px;">${label}</td><td style="font-family:var(--mono);">${m.totalQty||m.qty||'—'}</td><td style="font-family:var(--mono);font-size:11px;">${m.date}</td></tr>`;
-  }).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-sub);padding:14px;">لا توجد واردات بعد</td></tr>';
+    return`<tr>
+      <td style="font-family:var(--mono);font-size:11px;">${m.id}</td>
+      <td style="font-size:12px;">${label}</td>
+      <td style="font-family:var(--mono);">${m.totalQty||m.qty||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${m.date}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-xs" onclick="showInPermitById('${m.id}')">🖨️</button>
+        <button class="btn btn-danger btn-xs" onclick="deletePermit('${m.id}','in')" style="margin-right:3px;">🗑</button>
+      </td></tr>`;
+  }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-sub);padding:14px;">لا توجد واردات بعد</td></tr>';
 }
 
 function addInRow(){inRows.push({_id:Date.now(),itemId:'',qty:1,supplier:'',invoice:''});renderInRows();}
@@ -1027,10 +1051,17 @@ function renderOutgoing(){
   renderOutRows();
   const moves=[...DB.moves()].reverse().filter(m=>m.type==='out').slice(0,8);
   document.getElementById('recent-out').innerHTML=moves.map(m=>{
-    const cnt=m.items?m.items.length:1;
     const label=m.items?m.items.map(r=>{const x=DB.items().find(i=>i.id===r.itemId)||{};return x.name||'—';}).join('، '):'—';
-    return`<tr><td style="font-family:var(--mono);font-size:11px;">${m.id}</td><td>${m.dept||'—'}</td><td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</td><td style="font-family:var(--mono);font-size:11px;">${m.date}</td></tr>`;
-  }).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text-sub);padding:14px;">لا توجد منصرفات بعد</td></tr>';
+    return`<tr>
+      <td style="font-family:var(--mono);font-size:11px;">${m.id}</td>
+      <td>${m.dept||'—'}</td>
+      <td style="font-size:12px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${m.date}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-xs" onclick="showOutPermitById('${m.id}')">🖨️</button>
+        <button class="btn btn-danger btn-xs" onclick="deletePermit('${m.id}','out')" style="margin-right:3px;">🗑</button>
+      </td></tr>`;
+  }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-sub);padding:14px;">لا توجد منصرفات بعد</td></tr>';
 }
 
 function addOutRow(){outRows.push({_id:Date.now(),itemId:'',qty:1,note:''});renderOutRows();}
@@ -1227,6 +1258,36 @@ function saveItem(){
 }
 
 // ═══════════════════════════════════════════
+//  DELETE SINGLE PERMIT — حذف إذن منفرد
+// ═══════════════════════════════════════════
+function deletePermit(id, type){
+  const typeName = type==='in' ? 'الوارد' : 'الصرف';
+  if(!confirm(`هل تريد حذف إذن ${typeName} رقم ${id}؟\nسيتم عكس الكميات تلقائياً.`)) return;
+  const moves = DB.moves();
+  const move = moves.find(m=>m.id===id);
+  if(!move){ alert('الإذن غير موجود'); return; }
+  const items = DB.items();
+  // عكس الكميات
+  if(move.items){
+    move.items.forEach(r=>{
+      const idx=items.findIndex(i=>i.id===r.itemId);
+      if(idx<0) return;
+      if(type==='in')  items[idx].qty -= parseInt(r.qty)||0;  // كان وارد → نطرح
+      if(type==='out') items[idx].qty += parseInt(r.qty)||0;  // كان صرف → نرجّع
+      if(items[idx].qty<0) items[idx].qty=0;
+    });
+  }
+  DB.saveItems(items);
+  DB.saveMoves(moves.filter(m=>m.id!==id));
+  // تحديث الواجهة
+  if(type==='in'){ renderIncoming(); }
+  else           { renderOutgoing(); }
+  renderMovement();
+  updateBadge();
+  showToast(`✅ تم حذف إذن ${typeName} ${id} وعكس الكميات`);
+}
+
+// ═══════════════════════════════════════════
 //  RESET — تصفير البيانات
 // ═══════════════════════════════════════════
 function resetMovements(){
@@ -1302,10 +1363,11 @@ function renderSettings(){
   cb.checked=enabled;
   slider.style.background=enabled?'#1A7A8A':'#ccc';
   knob.style.transform=enabled?'translateX(24px)':'translateX(0)';
-  // fill username from stored user
+  // عرض اسم المستخدم الحالي (الـ key هو اسم الدخول)
   const users=DB.get('users')||{};
-  const key=Object.keys(users)[0]||'alnfati';
-  document.getElementById('set-username').value=users[key]?.displayName||key;
+  const key=currentUser?currentUser.key:Object.keys(users)[0]||'alnfati';
+  // نعرض الـ key (اسم الدخول الفعلي) في الحقل
+  document.getElementById('set-username').value=key;
 }
 
 function toggleLogin(enabled){
