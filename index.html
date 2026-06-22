@@ -250,9 +250,9 @@ textarea{resize:vertical;min-height:60px;}
 <body>
 
 <!-- ═══ LOGIN SCREEN ═══ -->
-<div id="login-screen">
+<div id="login-screen" class="hidden">
   <div class="login-box">
-    <div class="login-logo">🏢</div>
+    <div class="login-logo">🏥</div>
     <div class="login-title">منظومة إدارة المخازن</div>
     <div class="login-sub">كلية التقنية الطبية — الرجاء تسجيل الدخول</div>
     <div class="login-field">
@@ -334,7 +334,7 @@ textarea{resize:vertical;min-height:60px;}
           <div class="card-header-actions">
             <select id="filter-section" onchange="renderInventory()">
               <option value="">كل المخازن</option>
-              <option value="lab">🖥️ الأجهزة </option>
+              <option value="lab">🔬 الأجهزة والمعدات الطبية</option>
               <option value="stat">📚 القرطاسية والمكتبات</option>
               <option value="furn">🪑 الأثاث والعهدة المستديمة</option>
             </select>
@@ -485,11 +485,26 @@ textarea{resize:vertical;min-height:60px;}
 
     <!-- SETTINGS -->
     <div class="screen" id="screen-settings">
+
+      <!-- بطاقة تسجيل الدخول -->
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-header">⚙️ إعدادات النظام</div>
+        <div class="card-header">🔐 إعداد تسجيل الدخول</div>
         <div class="card-body">
+          <!-- مفتاح التفعيل -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--teal-bg);border-radius:10px;margin-bottom:16px;">
+            <div>
+              <div style="font-weight:700;font-size:14px;color:var(--teal-dark);">تفعيل شاشة تسجيل الدخول</div>
+              <div style="font-size:12px;color:var(--text-sub);margin-top:2px;">عند التفعيل ستظهر شاشة الدخول في كل مرة تفتح فيها المنظومة</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer;">
+              <input type="checkbox" id="toggle-login" onchange="toggleLogin(this.checked)" style="opacity:0;width:0;height:0;">
+              <span id="toggle-slider" style="position:absolute;inset:0;background:#ccc;border-radius:28px;transition:.3s;"></span>
+              <span id="toggle-knob" style="position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2);"></span>
+            </label>
+          </div>
+          <!-- بيانات الدخول -->
           <div class="form-grid">
-            <div class="form-group"><label>اسم المستخدم الحالي</label><input type="text" id="set-username" placeholder="اسم المستخدم"></div>
+            <div class="form-group"><label>اسم المستخدم</label><input type="text" id="set-username" placeholder="اسم المستخدم"></div>
             <div class="form-group"><label>كلمة المرور الجديدة</label><input type="password" id="set-newpass" placeholder="اتركه فارغاً لعدم التغيير"></div>
             <div class="form-group"><label>تأكيد كلمة المرور</label><input type="password" id="set-confirmpass" placeholder="أعد كتابة كلمة المرور"></div>
             <div class="form-group"><label>الرمز السري للعمليات الحساسة</label><input type="password" id="set-adminpin" placeholder="رمز سري (4–8 أرقام)"></div>
@@ -497,13 +512,22 @@ textarea{resize:vertical;min-height:60px;}
           <div style="margin-top:14px;"><button class="btn btn-primary" onclick="saveSettings()">💾 حفظ الإعدادات</button></div>
         </div>
       </div>
-      <!-- DANGER ZONE -->
+
+      <!-- النسخ الاحتياطي -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">💾 النسخ الاحتياطي</div>
+        <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="exportBackup()">💾 حفظ نسخة احتياطية</button>
+          <label class="btn btn-ghost" style="cursor:pointer;">📂 استعادة نسخة<input type="file" accept=".json" style="display:none;" onchange="importBackup(event)"></label>
+        </div>
+      </div>
+
+      <!-- منطقة العمليات الحساسة -->
       <div class="danger-zone">
         <div class="danger-zone-title">⚠️ منطقة العمليات الحساسة — تتطلب الرمز السري</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-danger" onclick="resetMovements()">🗑 تصفير حركة المخزن</button>
           <button class="btn btn-danger" onclick="resetAllData()">💥 تصفير كامل بيانات المنظومة</button>
-          <button class="btn btn-ghost" onclick="exportBackup()">💾 حفظ نسخة احتياطية أولاً</button>
         </div>
       </div>
     </div>
@@ -659,7 +683,7 @@ let pendingPinAction=null;
 if(!DB.get('initialized')){
   DB.saveItems([]);DB.saveMoves([]);DB.saveDepts(DEFAULT_DEPTS);
   DB.set('permitCounter',1000);
-  DB.set('users',{admin:{pass:'1234',pin:'0000',displayName:'المدير'}});
+  DB.set('users',{alnfati:{pass:'2000',pin:'2000',displayName:'النفاتي'}});
   DB.set('initialized',true);
   permitCounter=1000;
 }
@@ -688,14 +712,17 @@ function doLogin(){
 }
 
 function doLogout(){
+  const loginEnabled=DB.get('loginEnabled')||false;
+  if(!loginEnabled){showToast('تسجيل الدخول غير مفعّل — يمكن تفعيله من الإعدادات','error');return;}
   if(!confirm('هل تريد تسجيل الخروج؟'))return;
   currentUser=null;
   document.getElementById('login-screen').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('login-user').focus(),300);
 }
 
 function saveSettings(){
   if(!currentUser){return;}
-  const users=DB.get('users')||{admin};
+  const users=DB.get('users')||{};
   const dname=document.getElementById('set-username').value.trim();
   const np=document.getElementById('set-newpass').value;
   const cp=document.getElementById('set-confirmpass').value;
@@ -726,7 +753,7 @@ function requirePin(label,callback){
 
 function confirmPin(){
   const pin=document.getElementById('pin-input').value;
-  const users=DB.get('users')||{1234};
+  const users=DB.get('users')||{};
   const storedPin=currentUser?users[currentUser.key]?.pin:'0000';
   if(pin!==storedPin){document.getElementById('pin-err').textContent='❌ الرمز السري غير صحيح';return;}
   closeModal('modal-pin');
@@ -776,7 +803,7 @@ function showScreen(name,el){
   document.getElementById('screen-'+name).classList.add('active');
   if(el)el.classList.add('active');
   document.getElementById('page-title').textContent=TITLES[name]||'';
-  ({dashboard:renderDashboard,inventory:renderInventory,movement:renderMovement,incoming:renderIncoming,outgoing:renderOutgoing,depts:renderDepts,reports:renderReport,alerts:renderAlerts,settings:()=>{}})[name]?.();
+  ({dashboard:renderDashboard,inventory:renderInventory,movement:renderMovement,incoming:renderIncoming,outgoing:renderOutgoing,depts:renderDepts,reports:renderReport,alerts:renderAlerts,settings:renderSettings})[name]?.();
 }
 
 // ═══════════════════════════════════════════
@@ -1265,13 +1292,49 @@ function showToast(msg,type='success'){
 }
 
 // ═══════════════════════════════════════════
+//  SETTINGS — toggle login & render
+// ═══════════════════════════════════════════
+function renderSettings(){
+  const enabled=DB.get('loginEnabled')||false;
+  const cb=document.getElementById('toggle-login');
+  const slider=document.getElementById('toggle-slider');
+  const knob=document.getElementById('toggle-knob');
+  cb.checked=enabled;
+  slider.style.background=enabled?'#1A7A8A':'#ccc';
+  knob.style.transform=enabled?'translateX(24px)':'translateX(0)';
+  // fill username from stored user
+  const users=DB.get('users')||{};
+  const key=Object.keys(users)[0]||'alnfati';
+  document.getElementById('set-username').value=users[key]?.displayName||key;
+}
+
+function toggleLogin(enabled){
+  DB.set('loginEnabled',enabled);
+  const slider=document.getElementById('toggle-slider');
+  const knob=document.getElementById('toggle-knob');
+  slider.style.background=enabled?'#1A7A8A':'#ccc';
+  knob.style.transform=enabled?'translateX(24px)':'translateX(0)';
+  showToast(enabled?'🔐 تسجيل الدخول مفعّل — سيُطلب عند الفتح القادم':'🔓 تسجيل الدخول معطّل');
+}
+
+// ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
 function init(){
   document.getElementById('current-date').textContent=new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  // إذا كان المستخدم مسجّل الدخول مسبقاً (session لم تنته)
-  // نعرض شاشة تسجيل الدخول دائماً عند التحميل لضمان الأمان
-  setTimeout(()=>document.getElementById('login-user').focus(),300);
+  // تحقق هل تسجيل الدخول مفعّل
+  const loginEnabled=DB.get('loginEnabled')||false;
+  if(loginEnabled){
+    document.getElementById('login-screen').classList.remove('hidden');
+    setTimeout(()=>document.getElementById('login-user').focus(),300);
+  } else {
+    // دخول مباشر بدون تسجيل
+    document.getElementById('sidebar-username').textContent='النفاتي';
+    currentUser={key:'alnfati',pass:'2000',pin:'2000',displayName:'النفاتي'};
+    populateOutDept();
+    renderDashboard();
+    updateBadge();
+  }
 }
 init();
 </script>
