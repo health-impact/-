@@ -695,7 +695,7 @@ function doLogout(){
 
 function saveSettings(){
   if(!currentUser){return;}
-  const users=DB.get('users')||{};
+  const users=DB.get('users')||{admin};
   const dname=document.getElementById('set-username').value.trim();
   const np=document.getElementById('set-newpass').value;
   const cp=document.getElementById('set-confirmpass').value;
@@ -726,7 +726,7 @@ function requirePin(label,callback){
 
 function confirmPin(){
   const pin=document.getElementById('pin-input').value;
-  const users=DB.get('users')||{};
+  const users=DB.get('users')||{1234};
   const storedPin=currentUser?users[currentUser.key]?.pin:'0000';
   if(pin!==storedPin){document.getElementById('pin-err').textContent='❌ الرمز السري غير صحيح';return;}
   closeModal('modal-pin');
