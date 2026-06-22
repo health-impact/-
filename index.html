@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -717,11 +717,17 @@ function doLogin(){
 
 function doLogout(){
   const loginEnabled=DB.get('loginEnabled')||false;
-  if(!loginEnabled){showToast('تسجيل الدخول غير مفعّل — يمكن تفعيله من الإعدادات','error');return;}
+  if(!loginEnabled){
+    showToast('تسجيل الدخول غير مفعّل — فعّله من الإعدادات أولاً','error');
+    return;
+  }
   if(!confirm('هل تريد تسجيل الخروج؟'))return;
   currentUser=null;
   document.getElementById('login-screen').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('login-user').focus(),300);
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-err').textContent='';
+  setTimeout(()=>document.getElementById('login-user').focus(),200);
 }
 
 function saveSettings(){
@@ -1376,7 +1382,11 @@ function toggleLogin(enabled){
   const knob=document.getElementById('toggle-knob');
   slider.style.background=enabled?'#1A7A8A':'#ccc';
   knob.style.transform=enabled?'translateX(24px)':'translateX(0)';
-  showToast(enabled?'🔐 تسجيل الدخول مفعّل — سيُطلب عند الفتح القادم':'🔓 تسجيل الدخول معطّل');
+  if(enabled){
+    showToast('🔐 تسجيل الدخول مفعّل — سيُطلب عند الفتح القادم');
+  } else {
+    showToast('🔓 تسجيل الدخول معطّل — الدخول مفتوح');
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1384,19 +1394,17 @@ function toggleLogin(enabled){
 // ═══════════════════════════════════════════
 function init(){
   document.getElementById('current-date').textContent=new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  // تحقق هل تسجيل الدخول مفعّل
-  const loginEnabled=DB.get('loginEnabled')||false;
-  if(loginEnabled){
-    document.getElementById('login-screen').classList.remove('hidden');
-    setTimeout(()=>document.getElementById('login-user').focus(),300);
-  } else {
-    // دخول مباشر بدون تسجيل
-    document.getElementById('sidebar-username').textContent='النفاتي';
-    currentUser={key:'alnfati',pass:'2000',pin:'2000',displayName:'النفاتي'};
-    populateOutDept();
-    renderDashboard();
-    updateBadge();
-  }
+  // شاشة الدخول مخفية دائماً — تظهر فقط إذا فعّل المستخدم من الإعدادات
+  document.getElementById('login-screen').classList.add('hidden');
+  // دخول مباشر للمنظومة
+  const users=DB.get('users')||{};
+  const key=Object.keys(users)[0]||'alnfati';
+  const userData=users[key]||{displayName:key,pass:'2000',pin:'2000'};
+  currentUser={key,...userData};
+  document.getElementById('sidebar-username').textContent=userData.displayName||key;
+  populateOutDept();
+  renderDashboard();
+  updateBadge();
 }
 init();
 </script>
