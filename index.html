@@ -252,7 +252,7 @@ textarea{resize:vertical;min-height:60px;}
 <!-- ═══ LOGIN SCREEN ═══ -->
 <div id="login-screen" class="hidden">
   <div class="login-box">
-    <div class="login-logo">🏥</div>
+    <div class="login-logo">🏢</div>
     <div class="login-title">منظومة إدارة المخازن</div>
     <div class="login-sub">كلية التقنية الطبية — الرجاء تسجيل الدخول</div>
     <div class="login-field">
@@ -294,7 +294,7 @@ textarea{resize:vertical;min-height:60px;}
     <div class="u-avatar">👤</div>
     <div class="u-info">
       <div class="u-name" id="sidebar-username">—</div>
-      <div class="u-role">أمين مخزن</div>
+      <div class="u-role"></div>
     </div>
     <button class="u-logout" onclick="doLogout()" title="تسجيل الخروج">⏏</button>
   </div>
@@ -334,7 +334,7 @@ textarea{resize:vertical;min-height:60px;}
           <div class="card-header-actions">
             <select id="filter-section" onchange="renderInventory()">
               <option value="">كل المخازن</option>
-              <option value="lab">🔬 الأجهزة والمعدات الطبية</option>
+              <option value="lab">🖥️ الأجهزة  </option>
               <option value="stat">📚 القرطاسية والمكتبات</option>
               <option value="furn">🪑 الأثاث والعهدة المستديمة</option>
             </select>
@@ -543,7 +543,7 @@ textarea{resize:vertical;min-height:60px;}
       <div class="form-grid">
         <div class="form-group full"><label>اسم الصنف *</label><input type="text" id="add-name" placeholder="اسم الصنف بالتفصيل"></div>
         <div class="form-group"><label>المخزن *</label>
-          <select id="add-section"><option value="">— اختر —</option><option value="lab">🔬 الأجهزة والمعدات الطبية</option><option value="stat">📚 القرطاسية والمكتبات</option><option value="furn">🪑 الأثاث والعهدة المستديمة</option></select>
+          <select id="add-section"><option value="">— اختر —</option><option value="lab">🖥️ الأجهزة  </option><option value="stat">📚 القرطاسية والمكتبات</option><option value="furn">🪑 الأثاث والعهدة المستديمة</option></select>
         </div>
         <div class="form-group"><label>وحدة القياس</label>
           <select id="add-unit"><option>قطعة</option><option>علبة</option><option>زجاجة</option><option>لتر</option><option>كيلوغرام</option><option>رزمة</option><option>جهاز</option><option>مجموعة</option><option>كرتون</option><option>ورقة</option><option>طرد</option></select>
@@ -567,7 +567,7 @@ textarea{resize:vertical;min-height:60px;}
       <div class="form-grid">
         <div class="form-group full"><label>اسم الصنف *</label><input type="text" id="edit-name"></div>
         <div class="form-group"><label>المخزن *</label>
-          <select id="edit-section"><option value="lab">🔬 الأجهزة والمعدات</option><option value="stat">📚 القرطاسية</option><option value="furn">🪑 الأثاث</option></select>
+          <select id="edit-section"><option value="lab">🖥️ الأجهزة </option><option value="stat">📚 القرطاسية</option><option value="furn">🪑 الأثاث</option></select>
         </div>
         <div class="form-group"><label>وحدة القياس</label>
           <select id="edit-unit"><option>قطعة</option><option>علبة</option><option>زجاجة</option><option>لتر</option><option>كيلوغرام</option><option>رزمة</option><option>جهاز</option><option>مجموعة</option><option>كرتون</option></select>
@@ -659,7 +659,7 @@ const DB={
 
 // مخازن ثابتة
 const SECTIONS={
-  lab:{name:'الأجهزة والمعدات الطبية',icon:'🔬',cls:''},
+  lab:{name:'الأجهزة ',icon:'🖥️',cls:''},
   stat:{name:'القرطاسية والمكتبات',icon:'📚',cls:'stat'},
   furn:{name:'الأثاث والعهدة المستديمة',icon:'🪑',cls:'furn'},
 };
